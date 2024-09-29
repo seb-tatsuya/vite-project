@@ -1,11 +1,10 @@
 import { useState } from "react";
 
-// フィルター状態を表すセレクトボックス
+// フィルター状態を表すセレクトボックス（union型）
 type Filter = 'all' | 'checked' | 'unchecked' | 'removed';
 
-// "Todo型" の定義
+// Todo型の定義
 type Todo = {
-  // プロパティ value は文字列型
   value: string;
   readonly id: number;　//読み取り専用（readonly）
   checked: boolean;　// 完了/未完了を示すプロパティ
@@ -28,60 +27,52 @@ export const App = () => {
     // 何も入力されていなかったらリターン
     if (!text) return;
 
-    const handleEdit = (id: number, value: string) => {
-      setTodos((todos) => {
-        /**
-         * 引数として渡された todo の id が一致する
-         * 更新前の todos ステート内の todo の
-         * value プロパティを引数 value (= e.target.value) に書き換える
-         */
-        const newTodos = todos.map((todo) => {
-          if (todo.id === id) {
-            return { ...todo, value };　//コピー元（todos）は変更されず、コピー先（newTodos）にvalueを追加する
-          }
-          return todo;
-        });
-        // todos ステートを更新
-        return newTodos;
-      });
+    const newTodo: Todo = {
+      // text ステートの値を value プロパティへ
+      value: text,
+      id: new Date().getTime(), //Tdo型オブジェクトの型定義が更新されたためnumber型のidオブジェクトが必要
+      checked: false,　// 初期値（todo 作成時）は false
+      removed: false, // 初期値（未削除）
     };
 
-    // チェックボックスイベント
-    const handleCheck = (id: number, checked: boolean) => {
-      setTodos((todos) => {
-        const newTodos = todos.map((todo) => {
-          if (todo.id === id) {
-            return { ...todo, checked };
-          }
-          return todo;
-        });
-  
-        return newTodos;
-      });
-    };
+    /**
+     * 更新前の todos ステートを元に
+     * スプレッド構文で展開した要素へ
+     * newTodo を加えた新しい配列(todos)でステートを更新
+     **/
+    setTodos((todos) => [newTodo, ...todos]);
+    // フォームへの入力をクリアする
+    setText('');
 
-    // 削除ボタンイベント
-    const handleRemove = (id: number, removed: boolean) => {
+  };
+
+    // ジェネリクス（TypeScript）で関数定義（k型 書き換えたい値  V型 の新しい値を代入）
+    const handleTodo = <K extends keyof Todo, V extends Todo[K]>(
+      id: number,
+      key: K,
+      value: V
+    ) => {
       setTodos((todos) => {
         const newTodos = todos.map((todo) => {
           if (todo.id === id) {
-            return { ...todo, removed };
+            return { ...todo, [key]: value }; // 
+          } else {
+            return todo;
           }
-          return todo;
         });
   
         return newTodos;
       });
     };
 
-    // セレクトフィルターイベント
+        // セレクトフィルターイベント
     const handleFilter = (filter: Filter) => {
       setFilter(filter);
     };
 
     // ゴミ箱を空にするイベント
-    const handleEmpty = () => {
-      // シャローコピーで事足りる
+          const handleEmpty = () => {
+      // シャローコピーで事足りる（メモリ内で別領域が確保される）
       setTodos((todos) => todos.filter((todo) => !todo.removed));
     };
 
@@ -105,23 +96,6 @@ export const App = () => {
           return todo;
       }
     });
-
-    const newTodo: Todo = {
-      // text ステートの値を value プロパティへ
-      value: text,
-      id: new Date().getTime(), //Tdo型オブジェクトの型定義が更新されたためnumber型のidオブジェクトが必要
-      checked: false,　// 初期値（todo 作成時）は false
-      removed: false, // 初期値（未削除）
-    };
-
-    /**
-     * 更新前の todos ステートを元に
-     * スプレッド構文で展開した要素へ
-     * newTodo を加えた新しい配列(todos)でステートを更新
-     **/
-    setTodos((todos) => [newTodo, ...todos]);
-    // フォームへの入力をクリアする
-    setText('');
 
     //コンポーネント内で発火するイベントを処理する関数＝コールバック関数
 
@@ -165,15 +139,16 @@ export const App = () => {
                 type="checkbox"
                 disabled={todo.removed}
                 checked={todo.checked}
-                onChange={() => handleCheck(todo.id, !todo.checked)} // 呼び出し側で checked フラグを反転(!todo.checked)させる
+                onChange={() => handleTodo(todo.id, 'checked', !todo.checked)} // 呼び出し側で checked フラグを反転(!todo.checked)させる
                 />
             <input
             type="text"
             disabled={todo.checked || todo.removed} //チェックボックスにチェックが入っていたら非活性、削除済みの場合は非活性
             value={todo.value}
-            onChange={(e) => handleEdit(todo.id, e.target.value)}
+            onChange={(e) => handleTodo(todo.id, 'value', e.target.value)}
           />
-          <button onClick={() => handleRemove(todo.id, !todo.removed)}>
+          <button 
+            onClick={() => handleTodo(todo.id, 'removed', !todo.removed)}>
           {todo.removed ? '復元' : '削除'}
           </button>
           </li>);
@@ -182,5 +157,5 @@ export const App = () => {
       </div>
   )
 }
-}
+
 export default App
